@@ -43,11 +43,14 @@ export async function safeLoadMetar() {
             const contentType = r.headers.get("content-type") || "";
 
             if (contentType.includes("application/json")) {
-                const json = await r.json();
-                metar = json.metar || json.raw || "";
-            } else {
-                metar = await r.text();
-            }
+    const json = await r.json();
+    metar = json.metar || json.raw || "";
+} else {
+    metar = await r.text();
+}
+
+metar = String(metar).trim();   // ← PROTECTION PRO+++
+
 
             if (!metar) throw new Error("METAR vide");
 
