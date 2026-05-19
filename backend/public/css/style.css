@@ -254,3 +254,8 @@ body {
     border-color: #00eaff;
     transform: scale(1.05);
 }
+.runway-wind-box {
+    margin-top: 6px;
+    font-size: 14px;
+    line-height: 1.3;
+}
