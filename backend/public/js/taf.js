@@ -10,6 +10,16 @@ const IS_DEV = location.hostname.includes("localhost") || location.hostname.incl
 const log = (...a) => IS_DEV && console.log("[TAF]", ...a);
 const logErr = (...a) => console.error("[TAF ERROR]", ...a);
 
+// ------------------------------------------------------
+// INIT (manquant auparavant)
+// ------------------------------------------------------
+export function initTaf() {
+    safeLoadTaf();
+}
+
+// ------------------------------------------------------
+// Chargement sécurisé
+// ------------------------------------------------------
 export async function safeLoadTaf() {
     try {
         await loadTaf();
@@ -19,12 +29,18 @@ export async function safeLoadTaf() {
     }
 }
 
+// ------------------------------------------------------
+// Chargement brut
+// ------------------------------------------------------
 export async function loadTaf() {
     const data = await fetchJSON(ENDPOINTS.taf);
     updateTafUI(data);
     updateStatusPanel("TAF", data);
 }
 
+// ------------------------------------------------------
+// Mise à jour UI
+// ------------------------------------------------------
 export function updateTafUI(data) {
     const el = document.getElementById("taf");
     if (!el) return;
