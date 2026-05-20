@@ -11,6 +11,7 @@ import {
     initMap,
     resetMapView,
     toggleNoiseHeatmap,
+    toggleNoiseZones,   // ← AJOUT
     updateADSB
 } from "./map.js";
 
@@ -127,7 +128,15 @@ function setupUIBindings() {
         });
     }
 
-    // Panneaux / tabs (optionnel, si présents)
+    // Zones bruit
+    const noiseZonesBtn = document.getElementById("btn-noisezones-toggle");
+    if (noiseZonesBtn) {
+        noiseZonesBtn.addEventListener("click", () => {
+            toggleNoiseZones();
+        });
+    }
+
+    // Panneaux / tabs
     const tabs = document.querySelectorAll("[data-panel-target]");
     tabs.forEach(tab => {
         tab.addEventListener("click", () => {
