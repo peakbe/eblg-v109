@@ -49,6 +49,58 @@ function filterGeographic(acList, radiusKm = 80) { ... }
 // ======================================================
 function detectApproach(ac) { ... }
 
+// ======================================================
+// ADS-B — DÉTECTION DEPART RWY 04/22 PRO+++
+// ======================================================
+function detectDeparture(ac) {
+    for (const rwy of ["04", "22"]) {
+        const thr = RWY[rwy];
+
+        const brgFromThreshold = bearingTo(thr.lat, thr.lon, ac.lat, ac.lon);
+        const diff = angleDiff(brgFromThreshold, RWY[rwy].heading);
+
+        const d = distKm(ac.lat, ac.lon, thr.lat, thr.lon);
+
+        if (diff < 20 && d < 8 && ac.gs > 80) {
+            return rwy;
+        }
+    }
+    return null;
+}
+
+// ======================================================
+// ADS-B — Corridor d’approche dynamique RWY 04/22 PRO+++
+// ======================================================
+function generateApproachCorridor(rwy, lengthKm = 12, halfWidthKm = 0.6) {
+    const thr = RWY[rwy];
+    const heading = thr.heading * Math.PI / 180;
+
+    // vecteur piste
+    const vx = Math.cos(heading);
+    const vy = Math.sin(heading);
+
+    // vecteur normal
+    const nx = -vy;
+    const ny = vx;
+
+    // seuil piste
+    const p0 = [thr.lat, thr.lon];
+
+    // point éloigné (12 km)
+    const p1 = [
+        thr.lat + vy * (lengthKm / 111),
+        thr.lon + vx * (lengthKm / (111 * Math.cos(thr.lat * Math.PI / 180)))
+    ];
+
+    // trapèze
+    return [
+        [p0[0] + ny * (halfWidthKm / 111), p0[1] + nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))],
+        [p0[0] - ny * (halfWidthKm / 111), p0[1] - nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))],
+        [p1[0] - ny * (halfWidthKm / 111), p1[1] - nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))],
+        [p1[0] + ny * (halfWidthKm / 111), p1[1] + nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))]
+    ];
+}
+
 // 1) Coordonnées EBLG
 const EBLG = { lat: 50.637, lon: 5.443 };
 
@@ -321,6 +373,18 @@ return {
         track: f.dir
     })
 };
+
+        ac = ac.map(a => {
+    const approach = detectApproach(a);
+    const departure = detectDeparture(a);
+
+    return {
+        ...a,
+        approach,
+        departure,
+        corridor: approach ? generateApproachCorridor(approach) : null
+    };
+});
 
         const payload = { ac };
 
