@@ -181,6 +181,11 @@ export function updateNoiseHeatmap(list) {
 
 renderNoiseHeatmap(list);
 
+export function toggleHeatmapState(state) {
+    heatmapEnabled = state;
+    renderNoiseHeatmap(sonoDataRaw);
+}
+
 // ------------------------------------------------------
 // Rendu liste
 // ------------------------------------------------------
