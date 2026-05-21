@@ -2,16 +2,12 @@
 // MAP.JS — Cockpit IFR EBLG PRO+++
 // ======================================================
 
-import { ENDPOINTS } from "./config.js";
-
 export let map = null;
+
 let adsbLayer = null;
 let corridorLayer = null;
 let runwayLayer = null;
 let headingLayer = null;
-
-let lastFrame = performance.now();
-let fpsCounter = 0;
 
 // ------------------------------------------------------
 // INIT MAP
@@ -34,6 +30,44 @@ export function initMap() {
     headingLayer = L.layerGroup().addTo(map);
 
     drawRunways();
+}
+
+// ------------------------------------------------------
+// RESET MAP
+// ------------------------------------------------------
+export function resetMapView() {
+    if (!map) return;
+    map.setView([50.637, 5.443], 12);
+}
+
+// ------------------------------------------------------
+// DEBUG PANEL — FPS / CPU
+// ------------------------------------------------------
+export function initDebugPanel() {
+    const fpsEl = document.getElementById("fps");
+    const cpuEl = document.getElementById("cpu");
+    const renderEl = document.getElementById("render");
+
+    if (!fpsEl || !cpuEl || !renderEl) {
+        console.warn("[DEBUG] éléments manquants");
+        return;
+    }
+
+    let last = performance.now();
+
+    function loop() {
+        const now = performance.now();
+        const dt = now - last;
+        last = now;
+
+        fpsEl.textContent = (1000 / dt).toFixed(1);
+        cpuEl.textContent = dt.toFixed(1);
+        renderEl.textContent = dt.toFixed(1);
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
 }
 
 // ------------------------------------------------------
@@ -104,6 +138,7 @@ export function updateADSB(list) {
     list.forEach(ac => {
         if (!ac.lat || !ac.lon) return;
 
+        // Marker avion
         const icon = L.divIcon({
             className: "adsb-marker",
             html: `
@@ -115,8 +150,10 @@ export function updateADSB(list) {
 
         L.marker([ac.lat, ac.lon], { icon }).addTo(adsbLayer);
 
+        // Heading arrow
         drawHeadingArrow(ac);
 
+        // Corridor approche
         if (ac.corridor) {
             drawCorridor(ac.corridor);
             corridorDrawn = true;
@@ -186,4 +223,15 @@ function computePoint(lat, lon, brg, distKm) {
         lat: (lat2 * 180) / Math.PI,
         lon: (lon2 * 180) / Math.PI
     };
+}
+
+// ------------------------------------------------------
+// NOISE MAP (depuis app.js)
+// ------------------------------------------------------
+export function toggleNoiseHeatmap(state) {
+    console.log("[HEATMAP] toggle", state);
+}
+
+export function toggleNoiseZones() {
+    console.log("[ZONES BRUIT] toggle");
 }
