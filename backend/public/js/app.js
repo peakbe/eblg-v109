@@ -32,11 +32,17 @@ window.addEventListener("DOMContentLoaded", () => {
     initMetar();
     initTaf();
 
-    // Modules
+   // Modules
     safeLoadFids();
     loadSonometers();
     loadLogs();
     startLiveLogs();
+
+    // Recharge sonomètres après init complète de Leaflet
+    setTimeout(() => {
+        loadSonometers();
+        }, 300);
+
 
     // Status API
     checkApiStatus();
