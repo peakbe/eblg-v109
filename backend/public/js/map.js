@@ -1,17 +1,9 @@
 // ======================================================
 // MAP.JS — Cockpit IFR EBLG PRO+++
-// - Carte Leaflet
-// - Runways + corridor approche
-// - ADS-B markers + heading arrows
-// - Sonomètres (via sonometers.js)
-// - Debug panel FPS / CPU
 // ======================================================
 
 import { ENDPOINTS } from "./config.js";
 
-// ------------------------------------------------------
-// VARIABLES GLOBALES
-// ------------------------------------------------------
 export let map = null;
 let adsbLayer = null;
 let corridorLayer = null;
@@ -45,41 +37,17 @@ export function initMap() {
 }
 
 // ------------------------------------------------------
-// RESET MAP
-// ------------------------------------------------------
-export function resetMapView() {
-    map.setView([50.637, 5.443], 12);
-}
-
-// ------------------------------------------------------
-// DEBUG PANEL
-// ------------------------------------------------------
-export function initDebugPanel() {
-    const fpsEl = document.getElementById("fps");
-    const cpuEl = document.getElementById("cpu");
-    const renderEl = document.getElementById("render");
-
-    function loop() {
-        const now = performance.now();
-        const dt = now - lastFrame;
-        lastFrame = now;
-
-        fpsCounter = 1000 / dt;
-        fpsEl.textContent = fpsCounter.toFixed(1);
-        cpuEl.textContent = dt.toFixed(1);
-        renderEl.textContent = dt.toFixed(1);
-
-        requestAnimationFrame(loop);
-    }
-    loop();
-}
-
-// ------------------------------------------------------
 // RUNWAYS
 // ------------------------------------------------------
 const RWY = {
     "04": { lat: 50.64594, lon: 5.44321, heading: 40 },
     "22": { lat: 50.63302, lon: 5.46163, heading: 220 }
+};
+
+// Exposition globale pour sonometers.js
+window.runwayThresholds = {
+    "04": { lat: RWY["04"].lat, lon: RWY["04"].lon },
+    "22": { lat: RWY["22"].lat, lon: RWY["22"].lon }
 };
 
 function drawRunways() {
@@ -125,14 +93,17 @@ export function drawCorridor(points) {
 export function updateADSB(list) {
     adsbLayer.clearLayers();
     headingLayer.clearLayers();
-    corridorLayer.clearLayers();
 
-    if (!Array.isArray(list) || !list.length) return;
+    let corridorDrawn = false;
+
+    if (!Array.isArray(list) || !list.length) {
+        corridorLayer.clearLayers();
+        return;
+    }
 
     list.forEach(ac => {
         if (!ac.lat || !ac.lon) return;
 
-        // Marker avion
         const icon = L.divIcon({
             className: "adsb-marker",
             html: `
@@ -144,12 +115,15 @@ export function updateADSB(list) {
 
         L.marker([ac.lat, ac.lon], { icon }).addTo(adsbLayer);
 
-        // Heading arrow
         drawHeadingArrow(ac);
 
-        // Corridor approche
-        if (ac.corridor) drawCorridor(ac.corridor);
+        if (ac.corridor) {
+            drawCorridor(ac.corridor);
+            corridorDrawn = true;
+        }
     });
+
+    if (!corridorDrawn) corridorLayer.clearLayers();
 }
 
 // ------------------------------------------------------
@@ -212,15 +186,4 @@ function computePoint(lat, lon, brg, distKm) {
         lat: (lat2 * 180) / Math.PI,
         lon: (lon2 * 180) / Math.PI
     };
-}
-
-// ------------------------------------------------------
-// NOISE MAP (depuis app.js)
-// ------------------------------------------------------
-export function toggleNoiseHeatmap(state) {
-    console.log("[HEATMAP] toggle", state);
-}
-
-export function toggleNoiseZones() {
-    console.log("[ZONES BRUIT] toggle");
 }
