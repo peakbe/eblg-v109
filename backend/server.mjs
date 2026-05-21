@@ -20,8 +20,22 @@ import {
     setCachedAdsb
 } from "./adsbCache.mjs";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ------------------------------------------------------
+// MIDDLEWARES
+// ------------------------------------------------------
+app.use(cors());
+
+const publicDir = path.join(__dirname, "public");
+app.use(express.static(publicDir));
+
 // ======================================================
-// ADS-B — CONSTANTES EBLG
+// CONSTANTES EBLG / PISTES
 // ======================================================
 const EBLG = { lat: 50.637, lon: 5.443 };
 
@@ -31,26 +45,80 @@ const RWY = {
 };
 
 // ======================================================
-// ADS-B — OUTILS GÉOMÉTRIQUES PRO+++
+// OUTILS GÉOMÉTRIQUES PRO+++
 // ======================================================
-function distKm(lat1, lon1, lat2, lon2) { ... }
+function distKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
 
-function bearingTo(lat1, lon1, lat2, lon2) { ... }
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) *
+        Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) ** 2;
 
-function angleDiff(a, b) { ... }
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function bearingTo(lat1, lon1, lat2, lon2) {
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+    const x =
+        Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+        Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.cos(dLon);
+
+    const brng = Math.atan2(y, x) * 180 / Math.PI;
+    return (brng + 360) % 360;
+}
+
+function angleDiff(a, b) {
+    let d = Math.abs(a - b) % 360;
+    return d > 180 ? 360 - d : d;
+}
 
 // ======================================================
 // ADS-B — FILTRE GÉOGRAPHIQUE PRO+++
 // ======================================================
-function filterGeographic(acList, radiusKm = 80) { ... }
+function filterGeographic(acList, radiusKm = 80) {
+    return acList.filter(ac => {
+        const d = distKm(EBLG.lat, EBLG.lon, ac.lat, ac.lon);
+        return d <= radiusKm;
+    });
+}
 
 // ======================================================
 // ADS-B — DÉTECTION APPROCHE RWY 04/22 PRO+++
 // ======================================================
-function detectApproach(ac) { ... }
+function detectApproach(ac) {
+    const results = {};
+
+    for (const rwy of ["04", "22"]) {
+        const thr = RWY[rwy];
+
+        const brgToThreshold = bearingTo(ac.lat, ac.lon, thr.lat, thr.lon);
+        const diff = angleDiff(brgToThreshold, thr.heading);
+
+        const d = distKm(ac.lat, ac.lon, thr.lat, thr.lon);
+
+        if (diff < 15 && d < 12) {
+            results[rwy] = { diff, d };
+        }
+    }
+
+    if (results["04"] && !results["22"]) return "04";
+    if (results["22"] && !results["04"]) return "22";
+
+    if (results["04"] && results["22"]) {
+        return results["04"].d < results["22"].d ? "04" : "22";
+    }
+
+    return null;
+}
 
 // ======================================================
-// ADS-B — DÉTECTION DEPART RWY 04/22 PRO+++
+// ADS-B — DÉTECTION DÉPART RWY 04/22 PRO+++
 // ======================================================
 function detectDeparture(ac) {
     for (const rwy of ["04", "22"]) {
@@ -69,134 +137,47 @@ function detectDeparture(ac) {
 }
 
 // ======================================================
-// ADS-B — Corridor d’approche dynamique RWY 04/22 PRO+++
+// ADS-B — CORRIDOR APPROCHE DYNAMIQUE PRO+++
 // ======================================================
 function generateApproachCorridor(rwy, lengthKm = 12, halfWidthKm = 0.6) {
     const thr = RWY[rwy];
     const heading = thr.heading * Math.PI / 180;
 
-    // vecteur piste
     const vx = Math.cos(heading);
     const vy = Math.sin(heading);
 
-    // vecteur normal
     const nx = -vy;
     const ny = vx;
 
-    // seuil piste
     const p0 = [thr.lat, thr.lon];
 
-    // point éloigné (12 km)
     const p1 = [
         thr.lat + vy * (lengthKm / 111),
         thr.lon + vx * (lengthKm / (111 * Math.cos(thr.lat * Math.PI / 180)))
     ];
 
-    // trapèze
     return [
-        [p0[0] + ny * (halfWidthKm / 111), p0[1] + nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))],
-        [p0[0] - ny * (halfWidthKm / 111), p0[1] - nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))],
-        [p1[0] - ny * (halfWidthKm / 111), p1[1] - nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))],
-        [p1[0] + ny * (halfWidthKm / 111), p1[1] + nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))]
+        [
+            p0[0] + ny * (halfWidthKm / 111),
+            p0[1] + nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))
+        ],
+        [
+            p0[0] - ny * (halfWidthKm / 111),
+            p0[1] - nx * (halfWidthKm / (111 * Math.cos(p0[0] * Math.PI / 180)))
+        ],
+        [
+            p1[0] - ny * (halfWidthKm / 111),
+            p1[1] - nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))
+        ],
+        [
+            p1[0] + ny * (halfWidthKm / 111),
+            p1[1] + nx * (halfWidthKm / (111 * Math.cos(p1[0] * Math.PI / 180)))
+        ]
     ];
 }
 
-// 1) Coordonnées EBLG
-const EBLG = { lat: 50.637, lon: 5.443 };
-
-// 2) Fonction distance Haversine
-function distKm(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-
-    const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1 * Math.PI / 180) *
-        Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLon / 2) ** 2;
-
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-// 3) Filtre géographique PRO+++
-function filterGeographic(acList, radiusKm = 80) {
-    return acList.filter(ac => {
-        const d = distKm(EBLG.lat, EBLG.lon, ac.lat, ac.lon);
-        return d <= radiusKm;
-    });
-}
-
-
-// 4) Endpoint ADS-B PRO+++
-app.get("/api/adsb", async (req, res) => {
-    const cached = getCachedAdsb();
-    if (cached) return res.json(cached);
-
-    try {
-        const url = `https://airlabs.co/api/v9/flights?api_key=${process.env.AIRLABS_KEY}`;
-        const r = await fetch(url);
-
-        if (!r.ok) {
-            console.error("[ADSB] AirLabs HTTP", r.status);
-            if (cached) return res.json(cached);
-            return res.status(502).json({ error: "Airlabs upstream error" });
-        }
-
-        const json = await r.json();
-        const flights = json.response || [];
-
-        let ac = flights
-            .map(f => {
-                if (!f.lat || !f.lng) return null;
-
-                return {
-                    icao: f.hex || null,
-                    hex: f.hex || null,
-                    call: f.flight_icao || f.flight_iata || "",
-                    lat: f.lat,
-                    lon: f.lng,
-                    alt_baro: f.alt || null,
-                    gs: f.speed || null,
-                    track: f.dir || null,
-                    type: f.aircraft_icao || null
-                };
-            })
-            .filter(Boolean);
-
-        // 🔥 FILTRE GÉOGRAPHIQUE PRO+++
-        ac = filterGeographic(ac, 80);
-
-        const payload = { ac };
-
-        setCachedAdsb(payload);
-        return res.json(payload);
-
-    } catch (e) {
-        console.error("[ADSB] AirLabs fetch failed", e);
-        const cached = getCachedAdsb();
-        if (cached) return res.json(cached);
-        res.status(500).json({ error: "ADSB fetch failed" });
-    }
-});
-
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// ------------------------------------------------------
-// MIDDLEWARES
-// ------------------------------------------------------
-app.use(cors());
-
-const publicDir = path.join(__dirname, "public");
-app.use(express.static(publicDir));
-
 // ======================================================
-// METAR — EBLG
+// METAR — EBLG (avec cache PRO+++)
 // ======================================================
 app.get("/metar", async (req, res) => {
     const cached = getCachedMetar();
@@ -220,14 +201,14 @@ app.get("/metar", async (req, res) => {
 
     } catch (err) {
         console.error("[METAR] Erreur", err);
-        const cached = getCachedMetar();
-        if (cached) return res.json(cached);
+        const cached2 = getCachedMetar();
+        if (cached2) return res.json(cached2);
         return res.json({ fallback: true, raw: "METAR indisponible" });
     }
 });
 
 // ======================================================
-// TAF — EBLG
+// TAF — EBLG (avec cache PRO+++)
 // ======================================================
 app.get("/taf", async (req, res) => {
     const cached = getCachedTaf();
@@ -251,15 +232,14 @@ app.get("/taf", async (req, res) => {
 
     } catch (err) {
         console.error("[TAF] Erreur", err);
-        const cached = getCachedTaf();
-        if (cached) return res.json(cached);
+        const cached2 = getCachedTaf();
+        if (cached2) return res.json(cached2);
         return res.json({ fallback: true, raw: "TAF indisponible" });
     }
 });
 
 // ======================================================
 // FIDS — MODE AUTONOME PRO++
-// (à remplacer plus tard par une vraie source si tu veux)
 // ======================================================
 app.get("/fids", (req, res) => {
     const now = new Date();
@@ -316,11 +296,8 @@ app.get("/sonos", (req, res) => {
 });
 
 // ======================================================
-// ADS-B — AIRLABS PRO++ (cache + normalisation)
+// ADS-B — AIRLABS PRO++ (cache + normalisation + filtres)
 // ======================================================
-let adsbCache = null;
-let adsbCacheTime = 0;
-
 app.get("/api/adsb", async (req, res) => {
     const cached = getCachedAdsb();
     if (cached) return res.json(cached);
@@ -330,7 +307,7 @@ app.get("/api/adsb", async (req, res) => {
         const r = await fetch(url);
 
         if (!r.ok) {
-            console.error("[ADSB] AirLabs HTTP", r.status);
+            console.error("[ADSB] Airlabs HTTP", r.status);
             if (cached) return res.json(cached);
             return res.status(502).json({ error: "Airlabs upstream error" });
         }
@@ -338,7 +315,7 @@ app.get("/api/adsb", async (req, res) => {
         const json = await r.json();
         const flights = json.response || [];
 
-        const ac = flights
+        let ac = flights
             .map(f => {
                 if (!f.lat || !f.lng) return null;
 
@@ -355,36 +332,22 @@ app.get("/api/adsb", async (req, res) => {
                 };
             })
             .filter(Boolean);
-return {
-    icao: f.hex || null,
-    hex: f.hex || null,
-    call: f.flight_icao || f.flight_iata || "",
-    lat: f.lat,
-    lon: f.lng,
-    alt_baro: f.alt || null,
-    gs: f.speed || null,
-    track: f.dir || null,
-    type: f.aircraft_icao || null,
-    approach: detectApproach({
-        lat: f.lat,
-        lon: f.lng,
-        alt: f.alt,
-        gs: f.speed,
-        track: f.dir
-    })
-};
 
+        // Filtre géographique
+        ac = filterGeographic(ac, 80);
+
+        // Approche / départ / corridor
         ac = ac.map(a => {
-    const approach = detectApproach(a);
-    const departure = detectDeparture(a);
+            const approach = detectApproach(a);
+            const departure = detectDeparture(a);
 
-    return {
-        ...a,
-        approach,
-        departure,
-        corridor: approach ? generateApproachCorridor(approach) : null
-    };
-});
+            return {
+                ...a,
+                approach,
+                departure,
+                corridor: approach ? generateApproachCorridor(approach) : null
+            };
+        });
 
         const payload = { ac };
 
@@ -392,9 +355,9 @@ return {
         return res.json(payload);
 
     } catch (e) {
-        console.error("[ADSB] AirLabs fetch failed", e);
-        const cached = getCachedAdsb();
-        if (cached) return res.json(cached);
+        console.error("[ADSB] Airlabs fetch failed", e);
+        const cached2 = getCachedAdsb();
+        if (cached2) return res.json(cached2);
         res.status(500).json({ error: "ADSB fetch failed" });
     }
 });
@@ -411,6 +374,4 @@ app.get("*", (req, res) => {
 // ======================================================
 app.listen(PORT, () => {
     console.log(`[SERVER] Listening on port ${PORT}`);
-    console.log("CHECKWX_KEY =", process.env.CHECKWX_KEY);
-
 });
