@@ -40,7 +40,7 @@ name: "F015",
 lat: 50.688839,
 lon: 5.526217,
     db: 46,
-address: "Rue du Brouck,
+address: "Rue du Brouck",
 town: "Juprelle",
 status: "OK"},
 
