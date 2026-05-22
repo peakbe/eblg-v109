@@ -244,7 +244,6 @@ export function renderSonometers(sensors) {
         return;
     }
 
-    // Supprime ancienne couche
     if (window._sonoLayer) {
         window._map.removeLayer(window._sonoLayer);
     }
@@ -252,7 +251,6 @@ export function renderSonometers(sensors) {
     const group = L.layerGroup();
 
     sensors.forEach(s => {
-        // Couleur correcte selon piste active
         const color = getSonoColor(s.name, window.ACTIVE_RUNWAY);
 
         const marker = L.circleMarker([s.lat, s.lon], {
@@ -275,12 +273,16 @@ export function renderSonometers(sensors) {
 
     window._sonoLayer = group;
     group.addTo(window._map);
-}
-if (window.SONO_DEBUG) {
-    renderSonoDebugLabels(sensors);
-}
-if (window.SONO_DEBUG_ADV) {
-    renderSonoDebugAdvanced(sensors);
+
+    // DEBUG LABELS
+    if (window.SONO_DEBUG) {
+        renderSonoDebugLabels(sensors);
+    }
+
+    // DEBUG AVANCÉ
+    if (window.SONO_DEBUG_ADV) {
+        renderSonoDebugAdvanced(sensors);
+    }
 }
 
 // ------------------------------------------------------
