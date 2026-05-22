@@ -57,8 +57,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setupUIBindings();
     
     // FIDS tab
-    import { initFidsTabs } from "./fids.js";
-initFidsTabs();
+    initFidsTabs();
 
 });
 
