@@ -232,6 +232,74 @@ function computePoint(lat, lon, brg, distKm) {
         lon: (lon2 * 180) / Math.PI
     };
 }
+// ======================================================
+// ZONES DE BRUIT DYNAMIQUES — Cockpit IFR PRO+++
+// ======================================================
+
+let noiseZonesLayer = null;
+
+export function initNoiseZones() {
+    if (!noiseZonesLayer) {
+        noiseZonesLayer = L.layerGroup().addTo(map);
+    }
+}
+
+export function drawDynamicNoiseZones(activeRunway) {
+    if (!noiseZonesLayer) return;
+
+    noiseZonesLayer.clearLayers();
+
+    const thr = window.runwayThresholds[activeRunway];
+    if (!thr) return;
+
+    const heading = activeRunway === "22" ? 220 : 40;
+
+    // Distances (km)
+    const dGreen = 2.5;
+    const dYellow = 5;
+    const dRed = 8;
+
+    // Largeurs (km)
+    const wGreen = 0.8;
+    const wYellow = 1.2;
+    const wRed = 1.6;
+
+    const green = makeNoisePolygon(thr, heading, dGreen, wGreen);
+    const yellow = makeNoisePolygon(thr, heading, dYellow, wYellow);
+    const red = makeNoisePolygon(thr, heading, dRed, wRed);
+
+    L.polygon(green, {
+        color: "lime",
+        weight: 1,
+        fillOpacity: 0.15
+    }).addTo(noiseZonesLayer);
+
+    L.polygon(yellow, {
+        color: "yellow",
+        weight: 1,
+        fillOpacity: 0.12
+    }).addTo(noiseZonesLayer);
+
+    L.polygon(red, {
+        color: "red",
+        weight: 1,
+        fillOpacity: 0.10
+    }).addTo(noiseZonesLayer);
+}
+
+function makeNoisePolygon(thr, heading, distKm, widthKm) {
+    const left = computePoint(thr.lat, thr.lon, heading - 90, widthKm);
+    const right = computePoint(thr.lat, thr.lon, heading + 90, widthKm);
+    const farLeft = computePoint(left.lat, left.lon, heading, distKm);
+    const farRight = computePoint(right.lat, right.lon, heading, distKm);
+
+    return [
+        [left.lat, left.lon],
+        [right.lat, right.lon],
+        [farRight.lat, farRight.lon],
+        [farLeft.lat, farLeft.lon]
+    ];
+}
 
 // ------------------------------------------------------
 // ZONES BRUIT
