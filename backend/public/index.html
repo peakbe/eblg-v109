@@ -11,6 +11,8 @@
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <link rel="stylesheet" href="/css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
     
 <body>
@@ -67,6 +69,10 @@
                 </div>
                 <div id="sono-list"></div>
             </div>
+
+            <div id="acoustic-analysis">
+    <canvas id="db-histogram"></canvas>
+</div>
 
             <!-- LOGS -->
             <div id="panel-logs" class="panel hidden">
