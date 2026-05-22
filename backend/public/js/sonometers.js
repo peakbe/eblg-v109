@@ -5,6 +5,7 @@
 // - Heatmap + markers
 // - Panneau dB réel
 // ======================================================
+import { drawDynamicNoiseZones } from "./map.js";
 
 // ------------------------------------------------------
 // 1) TABLE COULEURS SELON PISTE ACTIVE
@@ -137,11 +138,13 @@ export async function loadSonometers() {
         const json = await r.json();
 
         // Piste active envoyée par backend
-        window.ACTIVE_RUNWAY = json.runway;
+       window.ACTIVE_RUNWAY = json.runway;
 
-        renderSonometers(json.sensors);
-        renderHeatmap(json.sensors);
-        updateDbPanel(json);
+drawDynamicNoiseZones(window.ACTIVE_RUNWAY);   // ← ajout PRO+++
+renderSonometers(json.sensors);
+renderHeatmap(json.sensors);
+updateDbPanel(json);
+
 
     } catch (err) {
         console.error("[SONO] Erreur fetch", err);
