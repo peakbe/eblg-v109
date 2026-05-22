@@ -48,6 +48,10 @@ function renderFids(arrivals, departures) {
     sortByTime(arrivals);
     sortByTime(departures);
 
+    // Limite à 10 vols
+    arrivals = arrivals.slice(0, 10);
+    departures = departures.slice(0, 10);
+
     arrEl.innerHTML = renderSection("Arrivées", arrivals);
     depEl.innerHTML = renderSection("Départs", departures);
 }
