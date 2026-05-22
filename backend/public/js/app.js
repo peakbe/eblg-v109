@@ -13,6 +13,7 @@ import {
 import { initMetar, safeLoadMetar } from "./metar.js";
 import { initTaf, safeLoadTaf } from "./taf.js";
 import { safeLoadFids } from "./fids.js";
+import { initFidsTabs } from "./fids.js";   // ← AJOUT PRO+++
 import { loadSonometers } from "./sonometers.js";
 import { checkApiStatus } from "./status.js";
 import { loadLogs } from "./logs.js";
