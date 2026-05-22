@@ -5,7 +5,6 @@
 import {
     initMap,
     resetMapView,
-    toggleNoiseHeatmap,
     toggleNoiseZones,
     initDebugPanel
 } from "./map.js";
