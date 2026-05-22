@@ -309,23 +309,6 @@ app.get("/fids", (req, res) => {
     res.json({ flights });
 });
 
-// Ajouter la logique piste active
-
-function getActiveRunwayFromWind(windDir) {
-    if (windDir == null) return "22";
-
-    const heading22 = 220;
-    const heading04 = 40;
-
-    const d22 = Math.abs(windDir - heading22);
-    const d04 = Math.abs(windDir - heading04);
-
-    const n22 = Math.min(d22, 360 - d22);
-    const n04 = Math.min(d04, 360 - d04);
-
-    return n22 < n04 ? "22" : "04";
-}
-
 // ======================================================
 // SONOMETERS — MODE AUTONOME PRO+++
 // ======================================================
