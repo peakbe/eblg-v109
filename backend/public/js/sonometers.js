@@ -1,6 +1,14 @@
 // ======================================================
-// SONOMETERS.JS — Cockpit IFR EBLG PRO+++
+// SONOMETERS PRO+++
+// - Chargement dynamique depuis backend
+// - Couleurs selon piste active (logique Patrick 04/22)
+// - Heatmap + markers
+// - Panneau dB réel
 // ======================================================
+
+// ------------------------------------------------------
+// 1) TABLE COULEURS SELON PISTE ACTIVE
+// ------------------------------------------------------
 const RUNWAY_COLOR_MAP = {
     "22": {
         green: ["F002","F003","F004","F005","F006","F007","F008","F009","F010","F011","F012","F013","F016"],
@@ -12,18 +20,9 @@ const RUNWAY_COLOR_MAP = {
     }
 };
 
-import { map } from "./map.js";
-
 // ------------------------------------------------------
-// VARIABLES
+// 2) Déterminer couleur d’un sonomètre
 // ------------------------------------------------------
-let sonoMarkersLayer = L.layerGroup();
-let noiseHeatmapLayer = null;
-
-export let sonoDataRaw = [];
-export let heatmapEnabled = false;
-
-// Fonction PRO+++ pour déterminer la couleur d’un sonomètre
 function getSonoColor(id, activeRunway) {
     const map = RUNWAY_COLOR_MAP[activeRunway];
     if (!map) return "gray";
@@ -35,130 +34,75 @@ function getSonoColor(id, activeRunway) {
 }
 
 // ------------------------------------------------------
-// LOAD SONOMETERS
+// 3) Heatmap
 // ------------------------------------------------------
-export async function loadSonometers() {
-    try {
-        const r = await fetch("/sonos");
-        const json = await r.json();
+let heatLayer = null;
 
-        if (!json || !Array.isArray(json.sensors)) {
-            console.warn("[SONO] format invalide");
-            return;
-        }
+function renderHeatmap(sensors) {
+    if (!window._map) return;
 
-        sonoDataRaw = json.sensors;
-
-        renderSonometers(sonoDataRaw);
-        renderNoiseHeatmap(sonoDataRaw);
-        updateDbPanel(json); // ← panneau dB réel
-
-    } catch (e) {
-        console.error("[SONO] Erreur fetch", e);
+    if (heatLayer) {
+        window._map.removeLayer(heatLayer);
     }
+
+    const points = sensors.map(s => [
+        s.lat,
+        s.lon,
+        Math.max(0.1, (s.db - 35) / 50) // normalisation
+    ]);
+
+    heatLayer = L.heatLayer(points, {
+        radius: 35,
+        blur: 25,
+        maxZoom: 12
+    });
+
+    heatLayer.addTo(window._map);
 }
 
 // ------------------------------------------------------
-// RENDER MARKERS
+// 4) Markers sonomètres
 // ------------------------------------------------------
-function renderSonometers(list) {
-    if (!map) return;
+export function renderSonometers(sensors) {
+    if (!window._map) {
+        console.error("[SONO ERROR] Carte non initialisée");
+        return;
+    }
 
-    sonoMarkersLayer.clearLayers();
-    
-const color = getSonoColor(sensor.name, ACTIVE_RUNWAY);
+    if (window._sonoLayer) {
+        window._map.removeLayer(window._sonoLayer);
+    }
 
-const marker = L.circleMarker([sensor.lat, sensor.lon], {
-    radius: 8,
-    color: color,
-    fillColor: color,
-    fillOpacity: 0.9,
-    weight: 2
-});
+    const group = L.layerGroup();
 
-    list.forEach(s => {
-        // Vérification stricte
-        if (typeof s.lat !== "number" || typeof s.lon !== "number") {
-            console.warn("[SONO] Coordonnées invalides", s);
-            return;
-        }
+    sensors.forEach(s => {
+        const color = getSonoColor(s.name, window.ACTIVE_RUNWAY);
 
-        const icon = L.divIcon({
-            className: "sono-marker",
-            html: `
-                <div class="sono-dot"></div>
-                <div class="sono-label">${s.name}</div>
-            `,
-            iconSize: [20, 20]
+        const marker = L.circleMarker([s.lat, s.lon], {
+            radius: 8,
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.9,
+            weight: 2
         });
 
-        // Utilisation EXACTE des coordonnées backend
-        L.marker([s.lat, s.lon], { icon }).addTo(sonoMarkersLayer);
+        marker.bindPopup(`
+            <b>${s.name}</b><br>
+            ${s.address}<br>
+            ${s.town}<br>
+            <b>${s.db} dB</b>
+        `);
+
+        group.addLayer(marker);
     });
 
-    sonoMarkersLayer.addTo(map);
+    window._sonoLayer = group;
+    group.addTo(window._map);
 }
 
 // ------------------------------------------------------
-// HEATMAP BRUIT
+// 5) Panneau dB réel
 // ------------------------------------------------------
-function renderNoiseHeatmap(list) {
-    if (!map) return;
-
-    // Supprimer l’ancienne heatmap
-    if (noiseHeatmapLayer) {
-        map.removeLayer(noiseHeatmapLayer);
-        noiseHeatmapLayer = null;
-    }
-
-    if (!heatmapEnabled) return;
-
-    // Normalisation dB → intensité 0–1
-    const points = list
-        .filter(s => s.lat && s.lon && s.db != null)
-        .map(s => [
-            s.lat,
-            s.lon,
-            Math.max(0.1, (s.db - 30) / 40) // 30–70 dB → 0.1–1
-        ]);
-
-    noiseHeatmapLayer = L.heatLayer(points, {
-        radius: 35,
-        blur: 20,
-        maxZoom: 17,
-        minOpacity: 0.25,
-        gradient: {
-            0.0: "lime",
-            0.5: "yellow",
-            1.0: "red"
-        }
-    });
-
-    noiseHeatmapLayer.addTo(map);
-}
-
-// ------------------------------------------------------
-// PUBLIC API — appelé par map.js
-// ------------------------------------------------------
-export function toggleHeatmapState(state) {
-    heatmapEnabled = state;
-    renderNoiseHeatmap(sonoDataRaw);
-}
-
-// ------------------------------------------------------
-// UTILISÉ PAR map.js quand ADS-B update
-// ------------------------------------------------------
-export function updateNoiseHeatmap(list) {
-    if (!heatmapEnabled) return;
-    renderNoiseHeatmap(list);
-}
-const dbPanel = document.getElementById("db-panel");
-const dbToggle = document.getElementById("db-toggle");
-const dbClose = document.getElementById("db-close");
-
-dbToggle.onclick = () => dbPanel.classList.toggle("hidden");
-dbClose.onclick = () => dbPanel.classList.add("hidden");
-
 export function updateDbPanel(payload) {
     const { runway, wind, trafficIndex, sensors } = payload;
 
@@ -182,4 +126,24 @@ export function updateDbPanel(payload) {
 
         list.appendChild(div);
     });
+}
+
+// ------------------------------------------------------
+// 6) Chargement depuis backend
+// ------------------------------------------------------
+export async function loadSonometers() {
+    try {
+        const r = await fetch("/sonos");
+        const json = await r.json();
+
+        // Piste active envoyée par backend
+        window.ACTIVE_RUNWAY = json.runway;
+
+        renderSonometers(json.sensors);
+        renderHeatmap(json.sensors);
+        updateDbPanel(json);
+
+    } catch (err) {
+        console.error("[SONO] Erreur fetch", err);
+    }
 }
