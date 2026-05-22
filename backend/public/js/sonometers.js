@@ -254,6 +254,7 @@ window._lastSonoData = json.sensors;
 drawDynamicNoiseZones(window.ACTIVE_RUNWAY);   // ← ajout PRO+++
 renderSonometers(json.sensors);
 renderHeatmap(json.sensors);
+renderHeatmapDebug(json.sensors);
 updateDbPanel(json);
 
 
