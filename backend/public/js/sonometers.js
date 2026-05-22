@@ -240,6 +240,9 @@ export function renderSonometers(sensors) {
 if (window.SONO_DEBUG) {
     renderSonoDebugLabels(sensors);
 }
+if (window.SONO_DEBUG_ADV) {
+    renderSonoDebugAdvanced(sensors);
+}
 
 // ------------------------------------------------------
 // 5) Panneau dB réel
