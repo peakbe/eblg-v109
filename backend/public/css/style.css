@@ -249,3 +249,50 @@ body {
     pointer-events: none;
     white-space: nowrap;
 }
+
+.fids-status {
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: white;
+    display: inline-block;
+}
+
+/* BOARDING — pulsation bleue */
+.fids-status-boarding {
+    background: #007bff;
+    animation: boardingPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes boardingPulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+/* LANDED — flash vert */
+.fids-status-landed {
+    background: #28a745;
+    animation: landedFlash 0.8s infinite;
+}
+
+@keyframes landedFlash {
+    0% { box-shadow: 0 0 0px #28a745; }
+    50% { box-shadow: 0 0 12px #28a745; }
+    100% { box-shadow: 0 0 0px #28a745; }
+}
+
+/* DELAYED — vibration rouge */
+.fids-status-delayed {
+    background: #dc3545;
+    animation: delayedShake 0.3s infinite;
+}
+
+@keyframes delayedShake {
+    0% { transform: translateX(0px); }
+    25% { transform: translateX(-2px); }
+    50% { transform: translateX(2px); }
+    75% { transform: translateX(-2px); }
+    100% { transform: translateX(0px); }
+}
+
