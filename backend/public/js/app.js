@@ -20,10 +20,7 @@ import { startLiveLogs } from "./logsLive.js";
 // ------------------------------------------------------
 // CHARGEMENT DES SONOMÈTRES UNIQUEMENT QUAND LA CARTE EST PRÊTE
 // ------------------------------------------------------
-window.addEventListener("map-ready", () => {
-    console.log("[MAP] Carte prête → chargement sonomètres");
-    loadSonometers();
-});
+window.addEventListener("map-ready", () => loadSonometers());
 
 // ------------------------------------------------------
 // INIT GLOBAL
