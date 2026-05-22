@@ -36,10 +36,12 @@ export function initMap() {
     // SIGNAL GLOBAL : CARTE PRÊTE
     // --------------------------------------------------
     // IMPORTANT : setTimeout garantit que app.js écoute déjà l’événement
-   setTimeout(() => {
+  setTimeout(() => {
     window._map = map;
+    map.invalidateSize();   // ← indispensable
     window.dispatchEvent(new Event("map-ready"));
 }, 0);
+
 }
 
 // ------------------------------------------------------
