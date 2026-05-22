@@ -1,10 +1,6 @@
 // ======================================================
 // FIDS.JS — Cockpit IFR EBLG PRO+++
-// - Chargement sécurisé FIDS
-// - Tri automatique par heure
-// - Couleurs ATC
-// - ETA / ETD
-// - Séparation Arrivals / Departures
+// Compatible API officielle Liège Airport
 // ======================================================
 
 import { ENDPOINTS } from "./config.js";
@@ -17,13 +13,13 @@ export async function safeLoadFids() {
     try {
         const data = await fetchJSON(ENDPOINTS.fids);
 
-        if (!data || !Array.isArray(data.flights)) {
+        if (!data || !Array.isArray(data.arrivals) || !Array.isArray(data.departures)) {
             console.error("[FIDS] Données invalides", data);
             updateStatusPanel("FIDS", { error: true });
             return;
         }
 
-        renderFids(data.flights);
+        renderFids(data.arrivals, data.departures);
         updateStatusPanel("FIDS", { ok: true });
 
     } catch (err) {
@@ -35,14 +31,11 @@ export async function safeLoadFids() {
 // ------------------------------------------------------
 // RENDU PRINCIPAL
 // ------------------------------------------------------
-function renderFids(list) {
+function renderFids(arrivals, departures) {
     const arrEl = document.getElementById("fids-arrivals");
     const depEl = document.getElementById("fids-departures");
 
     if (!arrEl || !depEl) return;
-
-    const arrivals = list.filter(f => f.type === "arrival");
-    const departures = list.filter(f => f.type === "departure");
 
     sortByTime(arrivals);
     sortByTime(departures);
@@ -52,7 +45,7 @@ function renderFids(list) {
 }
 
 // ------------------------------------------------------
-// TRI PAR HEURE (ETA / ETD)
+// TRI PAR HEURE (ETA / ETD / Scheduled)
 // ------------------------------------------------------
 function sortByTime(list) {
     list.sort((a, b) => {
@@ -63,8 +56,7 @@ function sortByTime(list) {
 }
 
 function getTimeValue(f) {
-    // Priorité : ETA/ETD → STD/Scheduled
-    const t = f.eta || f.etd || f.scheduled || "";
+    const t = f.estimated || f.scheduled || "";
     return parseTimeToMinutes(t);
 }
 
@@ -101,7 +93,7 @@ function renderSection(title, flights) {
 // ------------------------------------------------------
 function renderFlight(f) {
     const statusClass = getStatusClass(f.status);
-    const time = f.eta || f.etd || f.scheduled || "--:--";
+    const time = f.estimated || f.scheduled || "--:--";
 
     return `
         <div class="fids-row ${statusClass}">
@@ -125,6 +117,7 @@ function getStatusClass(s) {
     if (s.includes("DELAY")) return "st-delay";
     if (s.includes("BOARD")) return "st-boarding";
     if (s.includes("FINAL")) return "st-final";
+    if (s.includes("LANDED")) return "st-landed";
     if (s.includes("ON TIME") || s.includes("ONTIME")) return "st-ontime";
 
     return "st-unknown";
