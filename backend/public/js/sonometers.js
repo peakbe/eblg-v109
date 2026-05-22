@@ -6,8 +6,12 @@
 // - Panneau dB réel
 // ======================================================
 import { drawDynamicNoiseZones } from "./map.js";
+
 window.SONO_DEBUG = true; // mettre false pour désactiver
 let debugLayer = null;
+
+window.SONO_DEBUG_HEATMAP = true; // false pour désactiver
+let heatmapDebugLayer = null;
 
 // ------------------------------------------------------
 // 1) TABLE COULEURS SELON PISTE ACTIVE
@@ -80,6 +84,35 @@ function renderHeatmap(sensors) {
     });
 
     heatLayer.addTo(window._map);
+}
+
+// Fonction PRO+++ pour afficher les valeurs
+function renderHeatmapDebug(sensors) {
+    if (!window._map || !window.SONO_DEBUG_HEATMAP) return;
+
+    if (heatmapDebugLayer) {
+        window._map.removeLayer(heatmapDebugLayer);
+    }
+
+    heatmapDebugLayer = L.layerGroup();
+
+    sensors.forEach(s => {
+        const value = Math.max(0.1, (s.db - 35) / 50).toFixed(2);
+
+        const label = L.marker([s.lat, s.lon], {
+            icon: L.divIcon({
+                className: "heatmap-debug-label",
+                html: value,
+                iconSize: [40, 14],
+                iconAnchor: [20, -18]
+            }),
+            interactive: false
+        });
+
+        heatmapDebugLayer.addLayer(label);
+    });
+
+    heatmapDebugLayer.addTo(window._map);
 }
 
 // ------------------------------------------------------
@@ -173,6 +206,9 @@ export function renderSonometers(sensors) {
 
     window._sonoLayer = group;
     group.addTo(window._map);
+}
+if (window.SONO_DEBUG) {
+    renderSonoDebugLabels(sensors);
 }
 
 // ------------------------------------------------------
