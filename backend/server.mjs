@@ -352,40 +352,91 @@ function haversine(lat1, lon1, lat2, lon2) {
     const a =
         Math.sin(dLat / 2) ** 2 +
         Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) ** 2;
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+}
+
+// Détermination de la piste active - vent réel METAR
+function getActiveRunwayFromWind(windDir) {
+    if (windDir == null) return "22";
+
+    const heading22 = 220;
+    const heading04 = 40;
+
+    const d22 = Math.abs(windDir - heading22);
+    const d04 = Math.abs(windDir - heading04);
+
+    const n22 = Math.min(d22, 360 - d22);
+    const n04 = Math.min(d04, 360 - d04);
+
+    return n22 < n04 ? "22" : "04";
+}
+
+// Récupération du trafic réel - OpenSky / ADSBexchange
+async function getTrafficIndex() {
+    try {
+        const r = await fetch("https://eblg-dashboard-v84.onrender.com/api/adsb");
+        const data = await r.json();
+
+        const aircraft = data.states?.length ?? 0;
+
+        return Math.min(20, aircraft); // index 0–20
+    } catch (err) {
+        console.error("[ADSB ERROR]", err);
+        return 0;
+    }
 }
 
 // ======================================================
 // 3) MODELE ACOUSTIQUE
 // ======================================================
 function computeSimulatedDb(sensor, activeRunway, wind, trafficIndex) {
-    const base = 40;
+    const base = 40; // bruit de fond
+
+    // Distance à la piste active
+    const RUNWAYS = {
+        "22": { lat: 50.6435, lon: 5.4430 },
+        "04": { lat: 50.6465, lon: 5.4590 }
+    };
 
     const rw = RUNWAYS[activeRunway];
-    const d = rw ? haversine(sensor.lat, sensor.lon, rw.lat, rw.lon) : 2000;
+    const d = haversine(sensor.lat, sensor.lon, rw.lat, rw.lon);
 
+    // Atténuation géométrique
     const distanceLoss = 20 * Math.log10(Math.max(d, 100) / 100);
 
+    // Boost piste active (alignement)
     const name = sensor.name.toUpperCase();
     const runwayBoost =
         (name.includes("NORD") && activeRunway === "22") ||
         (name.includes("SUD") && activeRunway === "04")
-            ? 8
-            : 0;
+            ? 10
+            : 4;
 
-    const trafficBoost = Math.log10(trafficIndex + 1) * 5;
+    // Boost trafic réel
+    const trafficBoost = Math.log10(trafficIndex + 1) * 6;
 
-    const L0 = 70 + runwayBoost + trafficBoost;
+    // Effet vent réel (downwind = +3 dB)
+    let windBoost = 0;
+    if (wind?.dir != null) {
+        const diff = Math.abs(wind.dir - (activeRunway === "22" ? 220 : 40));
+        const aligned = Math.min(diff, 360 - diff);
+        if (aligned < 45) windBoost = 3;
+    }
 
+    // Niveau source à 100 m
+    const L0 = 70 + runwayBoost + trafficBoost + windBoost;
+
+    // Niveau final
     let L = L0 - distanceLoss;
 
-    L = Math.max(35, Math.min(80, L));
+    // Clamp réaliste
+    L = Math.max(35, Math.min(85, L));
 
-    const jitter = (Math.random() - 0.5) * 2;
-    L += jitter;
+    // Jitter réaliste
+    L += (Math.random() - 0.5) * 1.5;
 
     return Math.round(L * 10) / 10;
 }
@@ -405,32 +456,34 @@ async function getBackendMetar() {
             windSpeed: data?.wind_speed?.value ?? null
         };
     } catch (err) {
-        console.error("[METAR BACKEND ERROR]", err);
+        console.error("[METAR ERROR]", err);
         return { windDir: null, windSpeed: null };
     }
 }
 
 app.get("/sonos", async (req, res) => {
     const metar = await getBackendMetar();
+    const trafficIndex = await getTrafficIndex();
 
-    const windDir = metar.windDir;
-    const windSpeed = metar.windSpeed;
+    const wind = {
+        dir: metar.windDir,
+        kt: metar.windSpeed
+    };
 
-    const ACTIVE_RUNWAY = getActiveRunwayFromWind(windDir);
-
-    const trafficIndex = 8;
-    const wind = { dir: windDir, kt: windSpeed };
+    const ACTIVE_RUNWAY = getActiveRunwayFromWind(wind.dir);
 
     const sensors = sonometers.map(s => ({
         ...s,
         db: computeSimulatedDb(s, ACTIVE_RUNWAY, wind, trafficIndex)
     }));
 
-    res.json({ sensors });
+    res.json({
+        runway: ACTIVE_RUNWAY,
+        wind,
+        trafficIndex,
+        sensors
+    });
 });
-
-
-
 
 // ======================================================
 // ADS-B — AIRLABS PRO++ (cache + normalisation + filtres)
