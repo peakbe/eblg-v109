@@ -31,6 +31,15 @@ export function initMap() {
     headingLayer = L.layerGroup().addTo(map);
 
     drawRunways();
+
+    // --------------------------------------------------
+    // SIGNAL GLOBAL : CARTE PRÊTE
+    // --------------------------------------------------
+    // IMPORTANT : setTimeout garantit que app.js écoute déjà l’événement
+    setTimeout(() => {
+        window._map = map;        // expose globalement
+        window.dispatchEvent(new Event("map-ready"));
+    }, 0);
 }
 
 // ------------------------------------------------------
@@ -79,7 +88,6 @@ const RWY = {
     "22": { lat: 50.63302, lon: 5.46163, heading: 220 }
 };
 
-// Exposition globale pour sonometers.js
 window.runwayThresholds = {
     "04": { lat: RWY["04"].lat, lon: RWY["04"].lon },
     "22": { lat: RWY["22"].lat, lon: RWY["22"].lon }
@@ -91,21 +99,21 @@ function drawRunways() {
     Object.entries(RWY).forEach(([id, thr]) => {
         const end = computePoint(thr.lat, thr.lon, thr.heading, 3);
 
+        // Ligne orange cockpit
         L.polyline(
             [
                 [thr.lat, thr.lon],
                 [end.lat, end.lon]
             ],
-            { color: "#ff8800", weight: 5, opacity: 0.95 } // orange cockpit
-            
+            { color: "#ff8800", weight: 5, opacity: 0.95 }
         ).addTo(runwayLayer);
 
+        // Label piste
         L.marker([thr.lat, thr.lon], {
             icon: L.divIcon({
                 className: "rwy-label",
                 html: `<div class="rwy">${id}</div>`
             })
-            
         }).addTo(runwayLayer);
     });
 }
@@ -141,7 +149,6 @@ export function updateADSB(list) {
     list.forEach(ac => {
         if (!ac.lat || !ac.lon) return;
 
-        // Marker avion
         const icon = L.divIcon({
             className: "adsb-marker",
             html: `
@@ -153,10 +160,8 @@ export function updateADSB(list) {
 
         L.marker([ac.lat, ac.lon], { icon }).addTo(adsbLayer);
 
-        // Heading arrow
         drawHeadingArrow(ac);
 
-        // Corridor approche
         if (ac.corridor) {
             drawCorridor(ac.corridor);
             corridorDrawn = true;
@@ -227,13 +232,3 @@ function computePoint(lat, lon, brg, distKm) {
         lon: (lon2 * 180) / Math.PI
     };
 }
-
-// ------------------------------------------------------
-// NOISE MAP (depuis app.js)
-// ------------------------------------------------------
-export function toggleNoiseZones() {
-    console.log("[ZONES BRUIT] toggle");
-}
-
-// Quand la carte est prête → signal global
-window.dispatchEvent(new Event("map-ready"));
