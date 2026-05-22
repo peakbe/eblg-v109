@@ -234,3 +234,6 @@ function computePoint(lat, lon, brg, distKm) {
 export function toggleNoiseZones() {
     console.log("[ZONES BRUIT] toggle");
 }
+
+// Quand la carte est prête → signal global
+window.dispatchEvent(new Event("map-ready"));
