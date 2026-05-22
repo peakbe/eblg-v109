@@ -33,6 +33,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // Carte + debug
     initMap();
+    initNoiseZones();
     initDebugPanel();
 
     // Modules dépendants de la carte (mais PAS les sonomètres)
