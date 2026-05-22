@@ -100,7 +100,8 @@ function drawRunways() {
                 [thr.lat, thr.lon],
                 [end.lat, end.lon]
             ],
-            { color: "white", weight: 4 }
+            { color: "#ff8800", weight: 5, opacity 0.95 } // orange cockpit
+            
         ).addTo(runwayLayer);
 
         L.marker([thr.lat, thr.lon], {
@@ -108,6 +109,7 @@ function drawRunways() {
                 className: "rwy-label",
                 html: `<div class="rwy">${id}</div>`
             })
+            
         }).addTo(runwayLayer);
     });
 }
