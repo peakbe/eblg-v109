@@ -30,6 +30,7 @@ export async function loadSonometers() {
 
         renderSonometers(sonoDataRaw);
         renderNoiseHeatmap(sonoDataRaw);
+        updateDbPanel(json); // ← panneau dB réel
 
     } catch (e) {
         console.error("[SONO] Erreur fetch", e);
