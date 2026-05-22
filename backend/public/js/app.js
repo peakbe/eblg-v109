@@ -63,7 +63,9 @@ function setupTimers() {
     setInterval(safeLoadMetar, 60_000);
     setInterval(safeLoadTaf, 10 * 60_000);
     setInterval(safeLoadFids, 60_000);
-    setInterval(loadSonometers, 30_000); // OK car map-ready a déjà eu lieu
+    window.addEventListener("map-ready", () => {
+    setInterval(loadSonometers, 30_000);
+});
     setInterval(checkApiStatus, 60_000);
     setInterval(loadLogs, 120_000);
 }
