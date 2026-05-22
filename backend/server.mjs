@@ -272,41 +272,27 @@ app.get("/taf", async (req, res) => {
 // ======================================================
 // FIDS — MODE AUTONOME PRO+++ (format frontend)
 // ======================================================
-app.get("/fids", (req, res) => {
-    const nowIso = new Date().toISOString().slice(11, 16); // HH:MM
+app.get("/fids", async (req, res) => {
+    try {
+        const [arr, dep] = await Promise.all([
+            fetch("https://fids.liegeairport.com/api/flights/Arrivals").then(r => r.json()),
+            fetch("https://fids.liegeairport.com/api/flights/Departures").then(r => r.json())
+        ]);
 
-    const flights = [
-        {
-            type: "arrival",
-            flight: "FX123",
-            city: "Paris CDG",
-            eta: nowIso,
-            status: "ON TIME"
-        },
-        {
-            type: "arrival",
-            flight: "FX456",
-            city: "Leipzig",
-            eta: nowIso,
-            status: "LANDED"
-        },
-        {
-            type: "departure",
-            flight: "FX789",
-            city: "Cologne",
-            etd: nowIso,
-            status: "BOARDING"
-        },
-        {
-            type: "departure",
-            flight: "FX999",
-            city: "Paris CDG",
-            etd: nowIso,
-            status: "DELAYED"
-        }
-    ];
+        res.json({
+            arrivals: arr,
+            departures: dep
+        });
 
-    res.json({ flights });
+    } catch (err) {
+        console.error("[FIDS] Erreur API officielle", err);
+
+        // fallback minimal
+        res.json({
+            arrivals: [],
+            departures: []
+        });
+    }
 });
 
 // ======================================================
