@@ -302,3 +302,9 @@ body {
     text-shadow: 0 0 4px #000;
 }
 
+.radar-plane .plane-icon {
+    font-size: 22px;
+    text-shadow: 0 0 4px black;
+    transition: transform 0.3s linear, color 0.3s ease;
+}
+
