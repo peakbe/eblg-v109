@@ -296,3 +296,9 @@ body {
     100% { transform: translateX(0px); }
 }
 
+.radar-plane {
+    color: #0ff;
+    font-size: 16px;
+    text-shadow: 0 0 4px #000;
+}
+
