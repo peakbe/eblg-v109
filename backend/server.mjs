@@ -514,6 +514,40 @@ app.get("/api/adsb", async (req, res) => {
 });
 
 // ======================================================
+// Backend radar — logique type - centre EBLG
+// ======================================================
+const EBLG = { lat: 50.637, lon: 5.443 };
+const RADIUS_KM = 150;
+
+app.get("/radar", async (req, res) => {
+    try {
+        const r = await fetch("https://opensky-network.org/api/states/all");
+        const json = await r.json();
+
+        const states = json.states || [];
+
+        const flights = states
+            .map(s => ({
+                icao24: s[0],
+                callsign: (s[1] || "").trim(),
+                country: s[2],
+                lat: s[6],
+                lon: s[5],
+                alt: s[7],
+                heading: s[10],
+                speed: s[9]
+            }))
+            .filter(f => f.lat && f.lon && isInRadius(f.lat, f.lon, EBLG, RADIUS_KM));
+
+        res.json({ flights });
+
+    } catch (err) {
+        console.error("[RADAR] error", err);
+        res.status(500).json({ error: "radar_error" });
+    }
+});
+
+// ======================================================
 // LOGS — MODE SIMPLE PRO+++
 // ======================================================
 app.get("/logs", (req, res) => {
