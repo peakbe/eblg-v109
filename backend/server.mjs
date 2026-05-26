@@ -26,6 +26,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+import { filterRadarData } from "./radar.js";
+
 // ------------------------------------------------------
 // MIDDLEWARES
 // ------------------------------------------------------
