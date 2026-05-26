@@ -450,6 +450,29 @@ function computeSimulatedDb(sensor, activeRunway, wind, trafficIndex) {
     return Math.round(L * 10) / 10;
 }
 
+// ======================================================
+// RUNWAY SELECTION FROM WIND — Backend PRO+++
+// ======================================================
+function getActiveRunwayFromWind(windDir) {
+    if (windDir == null || Number.isNaN(windDir)) {
+        return "22"; // fallback par défaut
+    }
+
+    // Normalisation 0–360
+    const dir = ((windDir % 360) + 360) % 360;
+
+    // Vent de face pour 22 = 220°
+    const diff22 = Math.abs(dir - 220);
+    const diff04 = Math.abs(dir - 40);
+
+    // Normalisation >180°
+    const d22 = diff22 > 180 ? 360 - diff22 : diff22;
+    const d04 = diff04 > 180 ? 360 - diff04 : diff04;
+
+    // Choix piste la plus alignée au vent
+    return d22 < d04 ? "22" : "04";
+}
+// ========================================================
 app.get("/sonos", async (req, res) => {
     const metar = await getBackendMetar();
     const trafficIndex = await getTrafficIndex();
