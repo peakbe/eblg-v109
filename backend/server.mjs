@@ -44,14 +44,6 @@ app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
 // ======================================================
-// CONSTANTES PISTES
-// ======================================================
-const RWY = {
-    "04": { lat: 50.64594, lon: 5.44321, heading: 40 },
-    "22": { lat: 50.63302, lon: 5.46163, heading: 220 }
-};
-
-// ======================================================
 // OUTILS GÉOMÉTRIQUES
 // ======================================================
 function distKm(lat1, lon1, lat2, lon2) {
@@ -472,7 +464,7 @@ function getActiveRunwayFromWind(windDir) {
     // Choix piste la plus alignée au vent
     return d22 < d04 ? "22" : "04";
 }
-// ========================================================
+
 app.get("/sonos", async (req, res) => {
     const metar = await getBackendMetar();
     const trafficIndex = await getTrafficIndex();
