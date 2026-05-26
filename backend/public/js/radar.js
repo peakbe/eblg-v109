@@ -8,7 +8,7 @@
 import fetch from "node-fetch";
 
 // Centre EBLG
-const EBLG = { lat: 50.637, lon: 5.443 };
+import { EBLG } from "./constants.js";
 const RADIUS_KM = 150;
 
 // Cache simple pour éviter de surcharger l'API
