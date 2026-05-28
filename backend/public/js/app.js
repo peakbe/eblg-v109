@@ -12,32 +12,35 @@ import {
 
 import { initMetar, safeLoadMetar } from "./metar.js";
 import { initTaf, safeLoadTaf } from "./taf.js";
-import { safeLoadFids } from "./fids.js";
-import { initFidsTabs } from "./fids.js";   // ← AJOUT PRO+++
+import { safeLoadFids, initFidsTabs } from "./fids.js";
 import { loadSonometers } from "./sonometers.js";
 import { checkApiStatus } from "./status.js";
 import { loadLogs } from "./logs.js";
 import { startLiveLogs } from "./logsLive.js";
 import { initRadar } from "./radar.js";
-setInterval(initRadar, 2000); // toutes les 2 secondes
 
-// ------------------------------------------------------
+// ======================================================
 // CHARGEMENT DES SONOMÈTRES UNIQUEMENT QUAND LA CARTE EST PRÊTE
-// ------------------------------------------------------
-window.addEventListener("map-ready", () => loadSonometers());
+// ======================================================
+window.addEventListener("map-ready", () => {
+    loadSonometers();
+});
 
-// ------------------------------------------------------
+// ======================================================
 // INIT GLOBAL
-// ------------------------------------------------------
+// ======================================================
 window.addEventListener("DOMContentLoaded", () => {
     console.log("[APP] Initialisation cockpit IFR…");
 
-    // Carte + debug
+    // 1) Carte + debug
     initMap();
     initNoiseZones();
     initDebugPanel();
 
-    // Modules dépendants de la carte (mais PAS les sonomètres)
+    // 2) Radar (polling interne dans radar.js)
+    initRadar();
+
+    // 3) Modules dépendants de la carte (mais PAS les sonomètres)
     setTimeout(() => {
         console.log("[MAP] Init terminée — chargement modules dépendants…");
         safeLoadFids();
@@ -45,55 +48,51 @@ window.addEventListener("DOMContentLoaded", () => {
         startLiveLogs();
     }, 300);
 
-    // Météo (indépendant de la carte)
+    // 4) Météo (indépendant de la carte)
     initMetar();
     initTaf();
 
-    // Status API
+    // 5) Status API
     checkApiStatus();
 
-    // Timers
+    // 6) Timers
     setupTimers();
 
-    // UI
+    // 7) UI
     setupUIBindings();
-    
-    // FIDS tab
-    initFidsTabs();
 
+    // 8) FIDS tab
+    initFidsTabs();
 });
 
-// ------------------------------------------------------
+// ======================================================
 // TIMERS
-// ------------------------------------------------------
+// ======================================================
 function setupTimers() {
     setInterval(safeLoadMetar, 60_000);
     setInterval(safeLoadTaf, 10 * 60_000);
     setInterval(safeLoadFids, 60_000);
+
+    // Sonomètres → seulement quand la carte est prête
     window.addEventListener("map-ready", () => {
-    setInterval(loadSonometers, 30_000);
-});
+        setInterval(loadSonometers, 30_000);
+    });
+
     setInterval(checkApiStatus, 60_000);
     setInterval(loadLogs, 120_000);
-    setInterval(initRadar, 2000); // toutes les 2 s
+
+    // ❌ SUPPRIMÉ : setInterval(loadRadar, …)
+    // ✔ initRadar() gère déjà son propre polling interne
 }
 
-// ------------------------------------------------------
+// ======================================================
 // UI
-// ------------------------------------------------------
+// ======================================================
 function setupUIBindings() {
     // Reset carte
     const resetBtn = document.getElementById("btn-reset-map");
     if (resetBtn) {
         resetBtn.addEventListener("click", () => resetMapView());
-    }
-
-    // Heatmap bruit
-    const heatmapToggle = document.getElementById("btn-heatmap");
-    if (heatmapToggle) {
-        heatmapToggle.addEventListener("change", e => {
-            toggleNoiseHeatmap(e.target.checked);
-        });
     }
 
     // Zones de bruit
