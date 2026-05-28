@@ -38,7 +38,9 @@ window.addEventListener("DOMContentLoaded", () => {
     initDebugPanel();
 
     // 2) Radar (polling interne dans radar.js)
+    window.addEventListener("map-ready", () => {
     initRadar();
+});
 
     // 3) Modules dépendants de la carte (mais PAS les sonomètres)
     setTimeout(() => {
