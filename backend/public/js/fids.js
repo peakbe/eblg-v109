@@ -79,39 +79,29 @@ export function renderFids(arrivals, departures) {
     arrEl.innerHTML = "";
     depEl.innerHTML = "";
 
+    const renderRow = (f, isArrival) => {
+        const st = getFidsStatus(f);
+
+        return `
+            <div class="fids-row-jepp">
+                <span class="fids-col flight">${f.flightNumber}</span>
+                <span class="fids-col city">${isArrival ? f.origin : f.destination}</span>
+                <span class="fids-col time">${formatTime(f.date)}</span>
+                <span class="fids-col stand">${f.stand || "-"}</span>
+                <span class="fids-col status ${st.css}">${st.label}</span>
+            </div>
+        `;
+    };
+
     // ARRIVALS
     arrivals
         .sort((a,b) => new Date(a.date) - new Date(b.date))
-        .forEach(f => {
-            const st = getFidsStatus(f);
-
-            arrEl.innerHTML += `
-                <div class="fids-row">
-                    <span class="fids-flight">${f.flightNumber}</span>
-                    <span class="fids-from">${f.origin}</span>
-                    <span class="fids-time">${formatTime(f.date)}</span>
-                    <span class="fids-stand">${f.stand || "-"}</span>
-                    <span class="fids-status ${st.css}">${st.label}</span>
-                </div>
-            `;
-        });
+        .forEach(f => arrEl.innerHTML += renderRow(f, true));
 
     // DEPARTURES
     departures
         .sort((a,b) => new Date(a.date) - new Date(b.date))
-        .forEach(f => {
-            const st = getFidsStatus(f);
-
-            depEl.innerHTML += `
-                <div class="fids-row">
-                    <span class="fids-flight">${f.flightNumber}</span>
-                    <span class="fids-to">${f.destination}</span>
-                    <span class="fids-time">${formatTime(f.date)}</span>
-                    <span class="fids-stand">${f.stand || "-"}</span>
-                    <span class="fids-status ${st.css}">${st.label}</span>
-                </div>
-            `;
-        });
+        .forEach(f => depEl.innerHTML += renderRow(f, false));
 }
 
 // ------------------------------------------------------
