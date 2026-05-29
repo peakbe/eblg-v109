@@ -1,112 +1,82 @@
 // ======================================================
-// RUNWAYS.JS — Cockpit IFR PRO+++
-// - Données pistes EBLG
-// - Corridors IFR (approche + départ)
-// - Calcul vent (headwind / crosswind)
-// - Fournit seuils + corridors pour map.js & sonometers.js
+// RUNWAYS.JS — Cockpit IFR EBLG PRO+++
+// Gestion piste active + affichage heading
 // ======================================================
 
-// ======================================================
-// DONNÉES PISTES
-// ======================================================
+const IS_DEV = location.hostname.includes("localhost");
+const log = (...a) => IS_DEV && console.log("[RUNWAYS]", ...a);
+
 const RUNWAYS = {
     "04": {
+        id: "04",
         heading: 40,
-        threshold: [50.64590, 5.44380],
-        end:       [50.66220, 5.47600]
+        label: "RWY 04",
+        color: "#00ffcc"
     },
     "22": {
+        id: "22",
         heading: 220,
-        threshold: [50.66220, 5.47600],
-        end:       [50.64590, 5.44380]
+        label: "RWY 22",
+        color: "#ffcc00"
     }
 };
 
-// ======================================================
-// EXPORT — SEUILS POUR SONO & DISTANCES
-// ======================================================
-export function getRunwayThresholds() {
-    return {
-        "04": {
-            lat: RUNWAYS["04"].threshold[0],
-            lon: RUNWAYS["04"].threshold[1]
-        },
-        "22": {
-            lat: RUNWAYS["22"].threshold[0],
-            lon: RUNWAYS["22"].threshold[1]
-        }
-    };
-}
+let activeRunway = null;
 
-// ======================================================
-// CALCUL COMPOSANTES VENT — PRO+++
-// ======================================================
-export function computeWindComponents(windDir, windSpeed, runwayHeading) {
-    if (windDir == null || windSpeed == null) {
-        return { headwind: 0, crosswind: 0 };
+// ------------------------------------------------------
+// SET ACTIVE RUNWAY
+// ------------------------------------------------------
+export function setActiveRunway(id) {
+    const rwy = RUNWAYS[id];
+    if (!rwy) {
+        log("Piste inconnue:", id);
+        return;
     }
 
-    const angle = ((windDir - runwayHeading + 360) % 360);
-    const rad = angle * Math.PI / 180;
+    activeRunway = rwy;
+    window.activeRunway = rwy; // pour radar / sono / heatmap
 
-    const headwind = Math.round(windSpeed * Math.cos(rad));
-    const crosswind = Math.round(windSpeed * Math.sin(rad));
-
-    return { headwind, crosswind };
+    updateRunwayUI();
+    log("Piste active =", rwy.id);
 }
 
-// ======================================================
-// CORRIDORS IFR — PRO+++
-// map.js attend un tableau : [{ runway:"04", coords:[...] }, ...]
-// ======================================================
-export function getRunwayCorridors() {
-    const corridors = [];
+// ------------------------------------------------------
+// UI
+// ------------------------------------------------------
+function updateRunwayUI() {
+    const el = document.getElementById("runway-active");
+    if (!el) return;
 
-    Object.keys(RUNWAYS).forEach(rwy => {
-        const r = RUNWAYS[rwy];
-        const th = r.threshold;
-        const hdg = r.heading;
+    if (!activeRunway) {
+        el.textContent = "Piste: n/a";
+        return;
+    }
 
-        const rad = hdg * Math.PI / 180;
-        const dx = Math.cos(rad);
-        const dy = Math.sin(rad);
-
-        const APP_LEN = 0.045; // ~5 km
-        const DEP_LEN = 0.045;
-        const HALF_WIDTH = 0.008; // ~900 m
-
-        const appStart = [
-            th[0] - dx * APP_LEN,
-            th[1] - dy * APP_LEN
-        ];
-
-        const depEnd = [
-            th[0] + dx * DEP_LEN,
-            th[1] + dy * DEP_LEN
-        ];
-
-        const ox = -dy * HALF_WIDTH;
-        const oy = dx * HALF_WIDTH;
-
-        const approach = [
-            [appStart[0] - ox, appStart[1] - oy],
-            [th[0] - ox, th[1] - oy],
-            [th[0] + ox, th[1] + oy],
-            [appStart[0] + ox, appStart[1] + oy]
-        ];
-
-        const departure = [
-            [th[0] - ox, th[1] - oy],
-            [depEnd[0] - ox, depEnd[1] - oy],
-            [depEnd[0] + ox, depEnd[1] + oy],
-            [th[0] + ox, th[1] + oy]
-        ];
-
-        corridors.push({
-            runway: rwy,
-            coords: [...approach, ...departure]
-        });
-    });
-
-    return corridors;
+    el.textContent = `${activeRunway.label} (${activeRunway.heading}°)`;
 }
+
+// ------------------------------------------------------
+// INIT BOUTONS
+// ------------------------------------------------------
+function initRunwayButtons() {
+    const btn04 = document.querySelector("[data-runway='04']");
+    const btn22 = document.querySelector("[data-runway='22']");
+
+    if (btn04) {
+        btn04.addEventListener("click", () => setActiveRunway("04"));
+    }
+    if (btn22) {
+        btn22.addEventListener("click", () => setActiveRunway("22"));
+    }
+
+    // Piste par défaut
+    setActiveRunway("22");
+}
+
+initRunwayButtons();
+
+// ------------------------------------------------------
+// EXPORT GLOBAL (si besoin ailleurs)
+// ------------------------------------------------------
+window.setActiveRunway = setActiveRunway;
+window.RUNWAYS = RUNWAYS;
