@@ -89,29 +89,12 @@ function initDebugPanel() {
 }
 
 // ------------------------------------------------------
-// INIT MAP (appelé par radar.js)
-// ------------------------------------------------------
-export function initMap() {
-    const map = L.map("map", {
-        center: [50.637, 5.443],
-        zoom: 12,
-        zoomControl: false,
-        preferCanvas: true
-    });
-
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19
-    }).addTo(map);
-
-    window.map = map;
-    log("Carte initialisée");
-}
-
-// ------------------------------------------------------
 // INIT GLOBAL
 // ------------------------------------------------------
 async function initApp() {
     log("Initialisation cockpit IFR…");
+    
+    window.initMap();   // ← appelle la vraie carte IFR de map.js
 
     initSidebarTabs();
     initFidsTabs();
