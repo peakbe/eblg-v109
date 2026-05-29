@@ -13,12 +13,14 @@ let radarLayer = null;
 // ------------------------------------------------------
 async function loadRadar() {
     try {
-        ensureMapReady();
+        if (!ensureMapReady()) {
+            console.warn("[RADAR] Carte non prête → radar ignoré");
+            updateStatusPanel("ADSB", { error: true });
+            return;
+        }
 
         const data = await fetchJSON(ENDPOINTS.radar);
 
-        // Format attendu (souple) :
-        // [ { icao, callsign, points: [ { lat, lon, alt, ts }, ... ] }, ... ]
         if (!Array.isArray(data)) {
             console.warn("[RADAR] Format inattendu:", data);
             clearRadarLayer();
@@ -36,23 +38,33 @@ async function loadRadar() {
 }
 
 // ------------------------------------------------------
-// Vérifie que la carte existe
+// Vérifie que la carte existe et est valide
 // ------------------------------------------------------
 function ensureMapReady() {
     if (!window.map) {
-        console.warn("[RADAR] map inexistante, initMap() devrait déjà avoir été appelé par app.js");
-        return;
+        console.warn("[RADAR] window.map est NULL");
+        return false;
     }
+
+    // Vérifie que c’est bien une instance Leaflet
+    if (typeof window.map.addLayer !== "function") {
+        console.error("[RADAR] window.map n'est PAS une carte Leaflet !");
+        return false;
+    }
+
     if (!radarLayer) {
-        radarLayer = L.layerGroup().addTo(window.map);
+        radarLayer = L.layerGroup();
+        radarLayer.addTo(window.map);
     }
+
+    return true;
 }
 
 // ------------------------------------------------------
 // Nettoyage couche radar
 // ------------------------------------------------------
 function clearRadarLayer() {
-    if (radarLayer) {
+    if (radarLayer && typeof radarLayer.clearLayers === "function") {
         radarLayer.clearLayers();
     }
 }
@@ -61,9 +73,8 @@ function clearRadarLayer() {
 // Rendu radar
 // ------------------------------------------------------
 function renderRadar(tracks) {
-    if (!window.map) return;
+    if (!ensureMapReady()) return;
 
-    ensureMapReady();
     clearRadarLayer();
 
     tracks.forEach(track => {
@@ -75,14 +86,12 @@ function renderRadar(tracks) {
 
         if (latlngs.length < 2) return;
 
-        // Polyline principale
         const poly = L.polyline(latlngs, {
             color: "yellow",
             weight: 2,
             opacity: 0.8
         }).addTo(radarLayer);
 
-        // Dernier point = position actuelle
         const last = latlngs[latlngs.length - 1];
         const marker = L.circleMarker(last, {
             radius: 4,
@@ -99,7 +108,6 @@ function renderRadar(tracks) {
             );
         }
 
-        // Décorateur de direction (si plugin chargé)
         if (L.polylineDecorator) {
             L.polylineDecorator(poly, {
                 patterns: [
