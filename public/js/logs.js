@@ -1,46 +1,42 @@
 // ======================================================
 // LOGS.JS — Cockpit IFR EBLG PRO+++
-// - Chargement sécurisé des logs backend
-// - Anti-HTML, anti-erreur silencieuse
-// - Intégration panneau "LOGS"
+// Chargement des logs backend + rendu UI
 // ======================================================
 
 import { ENDPOINTS } from "./config.js";
 import { fetchJSON, updateStatusPanel } from "./helpers.js";
 
-export async function loadLogs() {
-    try {
-        const data = await fetchJSON(ENDPOINTS.logs || "/logs");
+// ------------------------------------------------------
+// Fonction principale appelée par app.js
+// ------------------------------------------------------
+async function loadLogs() {
+    const box = document.getElementById("logs-box");
+    if (!box) return;
 
-        if (!data || !Array.isArray(data.entries)) {
-            console.warn("[LOGS] Données invalides", data);
-            updateStatusPanel("LOGS", { error: true });
-            return;
+    try {
+        // Si ton endpoint renvoie du texte brut, remplace fetchJSON par fetch classique
+        const res = await fetch(ENDPOINTS.logs, { cache: "no-store" });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
         }
 
-        renderLogs(data.entries);
+        const text = await res.text();
+
+        box.textContent = text || "Aucun log disponible";
+        box.scrollTop = box.scrollHeight;
+
         updateStatusPanel("LOGS", { ok: true });
 
     } catch (err) {
-        console.error("[LOGS] Erreur loadLogs", err);
+        console.error("[LOGS] Erreur loadLogs()", err);
+        box.textContent = "Erreur lors du chargement des logs";
         updateStatusPanel("LOGS", { error: true });
     }
 }
 
-function renderLogs(list) {
-    const box = document.getElementById("logs-box");
-    if (!box) return;
-
-    box.innerHTML = list
-        .map(l => `<div class="log-line">${escapeHtml(l)}</div>`)
-        .join("");
-}
-
-function escapeHtml(s) {
-    return s.replace(/[&<>"]/g, c => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;"
-    }[c]));
-}
+// ------------------------------------------------------
+// EXPORT GLOBAL (clé pour app.js)
+// ------------------------------------------------------
+window.loadLogs = loadLogs;
+window.initLogs = () => {};
