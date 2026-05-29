@@ -93,14 +93,26 @@ function initDebugPanel() {
 // ------------------------------------------------------
 async function initApp() {
     log("Initialisation cockpit IFR…");
-    
-    window.initMap();   // ← appelle la vraie carte IFR de map.js
 
+    // --------------------------------------------------
+    // 1) INIT MAP (via map.js PRO+++)
+    // --------------------------------------------------
+    if (typeof window.initMap === "function") {
+        window.initMap();
+    } else {
+        console.error("[APP] ERREUR : window.initMap est introuvable !");
+    }
+
+    // --------------------------------------------------
+    // 2) INIT UI
+    // --------------------------------------------------
     initSidebarTabs();
     initFidsTabs();
     initDebugPanel();
 
-    // Appels initiaux
+    // --------------------------------------------------
+    // 3) CHARGEMENTS INITIAUX
+    // --------------------------------------------------
     try {
         await window.loadMetar();
         await window.loadTaf();
@@ -113,7 +125,9 @@ async function initApp() {
         console.error("[APP] Erreur init:", err);
     }
 
-    // Timers
+    // --------------------------------------------------
+    // 4) TIMERS IFR
+    // --------------------------------------------------
     setInterval(window.loadMetar, 60_000);
     setInterval(window.loadTaf, 5 * 60_000);
     setInterval(window.loadFids, 30_000);
