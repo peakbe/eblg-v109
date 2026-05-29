@@ -14,3 +14,6 @@ export const ENDPOINTS = {
     adsb: `${BASE_URL}/api/adsb`,
     logs: `${BASE_URL}/logs`
 };
+// config.js v155
+window.API_BASE = "";
+// Si un jour tu veux pointer vers un autre host : window.API_BASE = "https://eblg-dashboard-v84.onrender.com";
