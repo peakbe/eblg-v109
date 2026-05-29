@@ -1,119 +1,144 @@
 // ======================================================
 // APP.JS — Cockpit IFR EBLG PRO+++
+// Point d’entrée du dashboard
 // ======================================================
 
-import {
-    initMap,
-    resetMapView,
-    toggleNoiseZones,
-    initDebugPanel,
-    initNoiseZones
-} from "./map.js";
+// ------------------------------------------------------
+// IMPORTS (tous versionnés pour casser le cache)
+// ------------------------------------------------------
+import "./config.js?v=155";
+import "./metar.js?v=155";
+import "./taf.js?v=155";
+import "./fids.js?v=155";
+import "./sonometers.js?v=155";
+import "./radar.js?v=155";
+import "./logs.js?v=155";
+import "./logsLive.js?v=155";
+import "./runways.js?v=155";
+import "./status.js?v=155";
 
-import { initMetar, safeLoadMetar } from "./metar.js?v=155";
-import { initTaf, safeLoadTaf } from "./taf.js?v=155";
-import { safeLoadFids, initFidsTabs } from "./fids.js?v=155";
-import { loadSonometers } from "./sonometers.js?v=155";
-import { checkApiStatus } from "./status.j?v=155s";
-import { loadLogs } from "./logs.js?v=155";
-import { startLiveLogs } from "./logsLive.js?v=155";
-import { initRadar } from "./radar.js?v=155";
-
-// ======================================================
-// CHARGEMENT DES SONOMÈTRES UNIQUEMENT QUAND LA CARTE EST PRÊTE
-// ======================================================
-window.addEventListener("map-ready", () => {
-    loadSonometers();
-});
-
-// ======================================================
-// INIT GLOBAL
-// ======================================================
-window.addEventListener("DOMContentLoaded", () => {
-    console.log("[APP] Initialisation cockpit IFR…");
-
-    // 1) Carte + debug
-    initMap();
-    initNoiseZones();
-    initDebugPanel();
-
-    // 2) Radar (polling interne dans radar.js)
-    window.addEventListener("map-ready", () => {
-    initRadar();
-});
-
-    // 3) Modules dépendants de la carte (mais PAS les sonomètres)
-    setTimeout(() => {
-        console.log("[MAP] Init terminée — chargement modules dépendants…");
-        safeLoadFids();
-        loadLogs();
-        startLiveLogs();
-    }, 300);
-
-    // 4) Météo (indépendant de la carte)
-    initMetar();
-    initTaf();
-
-    // 5) Status API
-    checkApiStatus();
-
-    // 6) Timers
-    setupTimers();
-
-    // 7) UI
-    setupUIBindings();
-
-    // 8) FIDS tab
-    initFidsTabs();
-});
-
-// ======================================================
-// TIMERS
-// ======================================================
-function setupTimers() {
-    setInterval(safeLoadMetar, 60_000);
-    setInterval(safeLoadTaf, 10 * 60_000);
-    setInterval(safeLoadFids, 60_000);
-
-    // Sonomètres → seulement quand la carte est prête
-    window.addEventListener("map-ready", () => {
-        setInterval(loadSonometers, 30_000);
-    });
-
-    setInterval(checkApiStatus, 60_000);
-    setInterval(loadLogs, 120_000);
-
-    // ❌ SUPPRIMÉ : setInterval(loadRadar, …)
-    // ✔ initRadar() gère déjà son propre polling interne
+// ------------------------------------------------------
+// LOG
+// ------------------------------------------------------
+function log(msg) {
+    console.log(`[APP] ${msg}`);
 }
 
-// ======================================================
-// UI
-// ======================================================
-function setupUIBindings() {
-    // Reset carte
-    const resetBtn = document.getElementById("btn-reset-map");
-    if (resetBtn) {
-        resetBtn.addEventListener("click", () => resetMapView());
-    }
+// ------------------------------------------------------
+// INIT UI
+// ------------------------------------------------------
+function initSidebarTabs() {
+    const tabs = document.querySelectorAll("#sidebar-tabs button");
+    const panels = document.querySelectorAll("#sidebar-panels .panel");
 
-    // Zones de bruit
-    const noiseZonesBtn = document.getElementById("btn-noisezones-toggle");
-    if (noiseZonesBtn) {
-        noiseZonesBtn.addEventListener("click", () => toggleNoiseZones());
-    }
+    tabs.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = btn.dataset.panelTarget;
 
-    // Onglets panneaux
-    const tabs = document.querySelectorAll("[data-panel-target]");
-    tabs.forEach(tab => {
-        tab.addEventListener("click", () => {
-            const targetId = tab.getAttribute("data-panel-target");
+            panels.forEach(p => p.classList.add("hidden"));
+            document.getElementById(target).classList.remove("hidden");
 
-            document.querySelectorAll(".panel").forEach(p =>
-                p.classList.add("hidden")
-            );
-            const panel = document.getElementById(targetId);
-            if (panel) panel.classList.remove("hidden");
+            tabs.forEach(t => t.classList.remove("active"));
+            btn.classList.add("active");
         });
     });
 }
+
+function initFidsTabs() {
+    const tabs = document.querySelectorAll(".fids-tab");
+    const arr = document.getElementById("fids-arrivals");
+    const dep = document.getElementById("fids-departures");
+
+    tabs.forEach(btn => {
+        btn.addEventListener("click", () => {
+            tabs.forEach(t => t.classList.remove("active"));
+            btn.classList.add("active");
+
+            if (btn.dataset.fids === "arrivals") {
+                arr.style.display = "block";
+                dep.style.display = "none";
+            } else {
+                arr.style.display = "none";
+                dep.style.display = "block";
+            }
+        });
+    });
+}
+
+// ------------------------------------------------------
+// INIT DEBUG PANEL
+// ------------------------------------------------------
+function initDebugPanel() {
+    let last = performance.now();
+    let frames = 0;
+
+    function loop() {
+        const now = performance.now();
+        frames++;
+
+        if (now - last >= 1000) {
+            document.getElementById("fps").textContent = frames;
+            frames = 0;
+            last = now;
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+}
+
+// ------------------------------------------------------
+// INIT MAP (appelé par radar.js)
+// ------------------------------------------------------
+export function initMap() {
+    const map = L.map("map", {
+        center: [50.637, 5.443],
+        zoom: 12,
+        zoomControl: false,
+        preferCanvas: true
+    });
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19
+    }).addTo(map);
+
+    window.map = map;
+    log("Carte initialisée");
+}
+
+// ------------------------------------------------------
+// INIT GLOBAL
+// ------------------------------------------------------
+async function initApp() {
+    log("Initialisation cockpit IFR…");
+
+    initSidebarTabs();
+    initFidsTabs();
+    initDebugPanel();
+
+    // Appels initiaux
+    try {
+        await window.loadMetar();
+        await window.loadTaf();
+        await window.loadFids();
+        await window.loadSonometers();
+        await window.loadRadar();
+        await window.loadLogs();
+        await window.startLiveLogs();
+    } catch (err) {
+        console.error("[APP] Erreur init:", err);
+    }
+
+    // Timers
+    setInterval(window.loadMetar, 60_000);
+    setInterval(window.loadTaf, 5 * 60_000);
+    setInterval(window.loadFids, 30_000);
+    setInterval(window.loadSonometers, 60_000);
+    setInterval(window.loadRadar, 5_000);
+    setInterval(window.loadLogs, 10_000);
+
+    log("Cockpit IFR opérationnel");
+}
+
+initApp();
