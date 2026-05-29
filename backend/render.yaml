@@ -6,7 +6,7 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "npm install"
-    startCommand: "node server.mjs"
+    startCommand: "npm start"
     autoDeploy: true
     envVars:
       NODE_VERSION: 18
