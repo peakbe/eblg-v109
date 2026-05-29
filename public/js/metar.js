@@ -14,7 +14,8 @@ const ICAO = "EBLG";
 // INIT
 // ------------------------------------------------------
 export function initMetar() {
-    safeLoadMetar();
+    window.loadMetar = loadMetar;
+window.initMetar = initMetar;
 }
 
 // ------------------------------------------------------
