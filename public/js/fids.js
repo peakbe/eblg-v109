@@ -79,4 +79,12 @@ function renderFids(list, container) {
         tbody.appendChild(tr);
     });
 
-    table.appendChild
+    table.appendChild(tbody);
+    container.appendChild(table);
+}
+
+// ------------------------------------------------------
+// EXPORT GLOBAL (clé pour app.js)
+// ------------------------------------------------------
+window.loadFids = loadFids;
+window.initFids = () => {};
